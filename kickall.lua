@@ -9,13 +9,17 @@ local TrollRemote = LocalPlayer.PlayerGui
 
 -- Map PlaceIds to product IDs
 local ProductMap = {
-    [88993574192386] = 3530789704,
-    [77451737406508] = 3503251274,
-    [123882157996955] = 3485833132
+    [123882157996955] = 3485832735,
+    [74235991966880] = 3492856822,
+    [139733039793068] = 3513881790,
+    [94754832944762] = 3511773536,
+    [88761612446816] = 3506257777,
+    [128334198813458] = 3492026771,
+    [93052351618271] = 3512913788
 }
 
 local function getProductId()
-    return ProductMap[game.PlaceId] or 3530789704 -- fallback
+    return ProductMap[game.PlaceId] or 3485832735 -- fallback to first ID
 end
 
 while true do
