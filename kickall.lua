@@ -10,15 +10,14 @@ local TrollRemote = LocalPlayer.PlayerGui
 -- Map PlaceIds to product IDs
 local ProductMap = {
     [88993574192386] = 3530789704,
-    [77451737406508] = 3503251274
+    [77451737406508] = 3503251274,
+    [123882157996955] = 3485833132
 }
 
--- Function to get correct product ID
 local function getProductId()
     return ProductMap[game.PlaceId] or 3530789704 -- fallback
 end
 
--- Loop every second
 while true do
     local productId = getProductId()
 
@@ -33,5 +32,5 @@ while true do
         end
     end
 
-    task.wait(1) -- 1 second delay
+    task.wait(1)
 end
