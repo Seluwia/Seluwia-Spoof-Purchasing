@@ -17,6 +17,10 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
 
+local isMobile = UserInputService.TouchEnabled
+local autoSpeed = 100  -- signals per second
+
+-- Helper functions
 local function stroke(parent, color, thickness)
     local s = Instance.new("UIStroke", parent)
     s.Color = color or Color3.fromRGB(40, 40, 56)
@@ -34,21 +38,75 @@ local function getTime()
     return os.date("%H:%M:%S")
 end
 
+-- Scale UI for mobile
+local panelSize
+local fontSizeScale = isMobile and 0.8 or 1
+local buttonHeight = isMobile and 36 or 28
+local titleBarHeight = isMobile and 44 or 52
+local footerHeight = isMobile and 44 or 50
+
+if isMobile then
+    panelSize = UDim2.new(0.9, 0, 0.7, 0)
+else
+    panelSize = UDim2.new(0, 760, 0, 520)
+end
+
 local panel = Instance.new("Frame")
 panel.Name = "Panel"
-panel.Size = UDim2.new(0, 760, 0, 520)
-panel.Position = UDim2.new(0.5, -380, 0.5, -260)
+panel.Size = panelSize
+panel.Position = UDim2.new(0.5, -panelSize.X.Offset/2, 0.5, -panelSize.Y.Offset/2)
+if isMobile then
+    panel.Position = UDim2.new(0.05, 0, 0.15, 0)
+end
 panel.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
 panel.BorderSizePixel = 0
 panel.Parent = screenGui
 corner(panel, 16)
 stroke(panel, Color3.fromRGB(30, 30, 42), 1)
 
+-- Resize handle (PC only)
+if not isMobile then
+    local resizeHandle = Instance.new("Frame")
+    resizeHandle.Name = "ResizeHandle"
+    resizeHandle.Size = UDim2.new(0, 20, 0, 20)
+    resizeHandle.Position = UDim2.new(1, -20, 1, -20)
+    resizeHandle.AnchorPoint = Vector2.new(1, 1)
+    resizeHandle.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+    resizeHandle.BorderSizePixel = 0
+    resizeHandle.Parent = panel
+    corner(resizeHandle, 4)
+    stroke(resizeHandle, Color3.fromRGB(80, 80, 110), 1)
+
+    local resizing = false
+    local resizeStartPos, startSize
+    resizeHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = true
+            resizeStartPos = input.Position
+            startSize = panel.AbsoluteSize
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - resizeStartPos
+            local newWidth = math.clamp(startSize.X + delta.X, 400, 1200)
+            local newHeight = math.clamp(startSize.Y + delta.Y, 300, 800)
+            panel.Size = UDim2.new(0, newWidth, 0, newHeight)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = false
+        end
+    end)
+end
+
+-- Dragging
 local dragging = false
 local dragStart, startPos
 
 local function onInputBegan(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not resizing then
         dragging = true
         dragStart = input.Position
         startPos = panel.Position
@@ -68,9 +126,10 @@ local function onInputEnded(input)
     end
 end
 
+-- Title bar
 local titleBar = Instance.new("Frame")
 titleBar.Name = "TitleBar"
-titleBar.Size = UDim2.new(1, 0, 0, 52)
+titleBar.Size = UDim2.new(1, 0, 0, titleBarHeight)
 titleBar.BackgroundColor3 = Color3.fromRGB(13, 13, 17)
 titleBar.BorderSizePixel = 0
 titleBar.Parent = panel
@@ -89,6 +148,7 @@ titleBar.InputBegan:Connect(onInputBegan)
 UserInputService.InputChanged:Connect(onInputChanged)
 UserInputService.InputEnded:Connect(onInputEnded)
 
+-- Live dot
 local liveDot = Instance.new("Frame")
 liveDot.Size = UDim2.new(0, 9, 0, 9)
 liveDot.Position = UDim2.new(0, 20, 0.5, -4)
@@ -104,7 +164,7 @@ liveLabel.Position = UDim2.new(0, 34, 0.5, -10)
 liveLabel.BackgroundTransparency = 1
 liveLabel.Text = "LIVE"
 liveLabel.TextColor3 = Color3.fromRGB(61, 255, 160)
-liveLabel.TextSize = 11
+liveLabel.TextSize = 11 * fontSizeScale
 liveLabel.Font = Enum.Font.GothamBold
 liveLabel.TextXAlignment = Enum.TextXAlignment.Left
 liveLabel.ZIndex = titleBar.ZIndex + 2
@@ -125,7 +185,7 @@ titleText.Position = UDim2.new(0.5, -100, 0, 0)
 titleText.BackgroundTransparency = 1
 titleText.Text = "SELUWIA"
 titleText.TextColor3 = Color3.fromRGB(210, 210, 228)
-titleText.TextSize = 14
+titleText.TextSize = 14 * fontSizeScale
 titleText.Font = Enum.Font.GothamBold
 titleText.ZIndex = titleBar.ZIndex + 2
 titleText.Parent = titleBar
@@ -134,9 +194,9 @@ local clearBtn = Instance.new("TextButton")
 clearBtn.Size = UDim2.new(0, 76, 0, 30)
 clearBtn.Position = UDim2.new(1, -92, 0.5, -15)
 clearBtn.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
-clearBtn.Text = "✕ Clear"
+clearBtn.Text = "X Clear"
 clearBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
-clearBtn.TextSize = 11
+clearBtn.TextSize = 11 * fontSizeScale
 clearBtn.Font = Enum.Font.GothamBold
 clearBtn.BorderSizePixel = 0
 clearBtn.ZIndex = titleBar.ZIndex + 3
@@ -151,13 +211,14 @@ clearBtn.MouseLeave:Connect(function()
     clearBtn.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
 end)
 
+-- Log area
 local logArea = Instance.new("ScrollingFrame")
 logArea.Name = "LogArea"
-logArea.Size = UDim2.new(1, -12, 1, -112)
-logArea.Position = UDim2.new(0, 6, 0, 58)
+logArea.Size = UDim2.new(1, -12, 1, -(titleBarHeight + footerHeight + 10))
+logArea.Position = UDim2.new(0, 6, 0, titleBarHeight + 6)
 logArea.BackgroundTransparency = 1
 logArea.BorderSizePixel = 0
-logArea.ScrollBarThickness = 3
+logArea.ScrollBarThickness = isMobile and 6 or 3
 logArea.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 90)
 logArea.CanvasSize = UDim2.new(0, 0, 0, 0)
 logArea.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -165,7 +226,7 @@ logArea.Parent = panel
 
 local listLayout = Instance.new("UIListLayout", logArea)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Padding = UDim.new(0, 7)
+listLayout.Padding = UDim.new(0, isMobile and 10 or 7)
 listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 
 local logPad = Instance.new("UIPadding", logArea)
@@ -174,9 +235,10 @@ logPad.PaddingBottom = UDim.new(0, 6)
 logPad.PaddingLeft = UDim.new(0, 4)
 logPad.PaddingRight = UDim.new(0, 4)
 
+-- Footer
 local footer = Instance.new("Frame")
-footer.Size = UDim2.new(1, 0, 0, 50)
-footer.Position = UDim2.new(0, 0, 1, -50)
+footer.Size = UDim2.new(1, 0, 0, footerHeight)
+footer.Position = UDim2.new(0, 0, 1, -footerHeight)
 footer.BackgroundColor3 = Color3.fromRGB(13, 13, 17)
 footer.BorderSizePixel = 0
 footer.Parent = panel
@@ -194,19 +256,33 @@ countLabel.Position = UDim2.new(0, 20, 0, 0)
 countLabel.BackgroundTransparency = 1
 countLabel.Text = "0 events captured"
 countLabel.TextColor3 = Color3.fromRGB(160, 155, 200)
-countLabel.TextSize = 12
+countLabel.TextSize = 12 * fontSizeScale
 countLabel.Font = Enum.Font.Gotham
 countLabel.TextXAlignment = Enum.TextXAlignment.Left
 countLabel.ZIndex = footer.ZIndex + 1
 countLabel.Parent = footer
 
+local settingsBtn = Instance.new("TextButton")
+settingsBtn.Size = UDim2.new(0, 50, 0, buttonHeight)
+settingsBtn.Position = UDim2.new(1, -90, 0.5, -buttonHeight/2)
+settingsBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+settingsBtn.Text = "SET"
+settingsBtn.TextColor3 = Color3.fromRGB(170, 165, 220)
+settingsBtn.TextSize = 11 * fontSizeScale
+settingsBtn.Font = Enum.Font.GothamBold
+settingsBtn.BorderSizePixel = 0
+settingsBtn.ZIndex = footer.ZIndex + 1
+settingsBtn.Parent = footer
+corner(settingsBtn, 7)
+stroke(settingsBtn, Color3.fromRGB(55, 50, 85), 1)
+
 local stopAllBtn = Instance.new("TextButton")
-stopAllBtn.Size = UDim2.new(0, 80, 0, 28)
-stopAllBtn.Position = UDim2.new(1, -180, 0.5, -14)
+stopAllBtn.Size = UDim2.new(0, 80, 0, buttonHeight)
+stopAllBtn.Position = UDim2.new(1, -170, 0.5, -buttonHeight/2)
 stopAllBtn.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
 stopAllBtn.Text = "Stop All"
 stopAllBtn.TextColor3 = Color3.fromRGB(255, 120, 120)
-stopAllBtn.TextSize = 11
+stopAllBtn.TextSize = 11 * fontSizeScale
 stopAllBtn.Font = Enum.Font.GothamBold
 stopAllBtn.BorderSizePixel = 0
 stopAllBtn.ZIndex = footer.ZIndex + 1
@@ -219,17 +295,186 @@ closeBtn.Size = UDim2.new(0, 26, 0, 26)
 closeBtn.Position = UDim2.new(1, -6, 0, -6)
 closeBtn.AnchorPoint = Vector2.new(1, 0)
 closeBtn.BackgroundColor3 = Color3.fromRGB(35, 12, 12)
-closeBtn.Text = "×"
+closeBtn.Text = "X"
 closeBtn.TextColor3 = Color3.fromRGB(255, 90, 90)
-closeBtn.TextSize = 17
+closeBtn.TextSize = 17 * fontSizeScale
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.BorderSizePixel = 0
 closeBtn.ZIndex = 10
 closeBtn.Parent = panel
 corner(closeBtn, 999)
 
+-- Settings window (toggle)
+local settingsWindow = nil
+local function toggleSettings()
+    if settingsWindow then
+        settingsWindow:Destroy()
+        settingsWindow = nil
+    else
+        settingsWindow = Instance.new("Frame")
+        settingsWindow.Name = "SettingsWindow"
+        settingsWindow.Size = UDim2.new(0, 300, 0, 200)
+        settingsWindow.Position = UDim2.new(0.5, -150, 0.5, -100)
+        settingsWindow.BackgroundColor3 = Color3.fromRGB(13, 13, 17)
+        settingsWindow.BorderSizePixel = 0
+        settingsWindow.ZIndex = 50
+        settingsWindow.Parent = screenGui
+        corner(settingsWindow, 12)
+        stroke(settingsWindow, Color3.fromRGB(30, 30, 45), 1)
+
+        local settingsTitleBar = Instance.new("Frame")
+        settingsTitleBar.Size = UDim2.new(1, 0, 0, 40)
+        settingsTitleBar.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
+        settingsTitleBar.BorderSizePixel = 0
+        settingsTitleBar.ZIndex = 51
+        settingsTitleBar.Parent = settingsWindow
+        corner(settingsTitleBar, 12)
+
+        local settingsTitle = Instance.new("TextLabel")
+        settingsTitle.Size = UDim2.new(1, -40, 1, 0)
+        settingsTitle.Position = UDim2.new(0, 10, 0, 0)
+        settingsTitle.BackgroundTransparency = 1
+        settingsTitle.Text = "Settings"
+        settingsTitle.TextColor3 = Color3.fromRGB(210, 210, 228)
+        settingsTitle.TextSize = 14
+        settingsTitle.Font = Enum.Font.GothamBold
+        settingsTitle.TextXAlignment = Enum.TextXAlignment.Left
+        settingsTitle.ZIndex = 52
+        settingsTitle.Parent = settingsTitleBar
+
+        local closeSettingsBtn = Instance.new("TextButton")
+        closeSettingsBtn.Size = UDim2.new(0, 24, 0, 24)
+        closeSettingsBtn.Position = UDim2.new(1, -30, 0, 8)
+        closeSettingsBtn.BackgroundColor3 = Color3.fromRGB(35, 12, 12)
+        closeSettingsBtn.Text = "X"
+        closeSettingsBtn.TextColor3 = Color3.fromRGB(255, 90, 90)
+        closeSettingsBtn.TextSize = 14
+        closeSettingsBtn.Font = Enum.Font.GothamBold
+        closeSettingsBtn.BorderSizePixel = 0
+        closeSettingsBtn.ZIndex = 52
+        closeSettingsBtn.Parent = settingsTitleBar
+        corner(closeSettingsBtn, 12)
+        closeSettingsBtn.MouseButton1Click:Connect(function()
+            if settingsWindow then
+                settingsWindow:Destroy()
+                settingsWindow = nil
+            end
+        end)
+
+        -- Drag settings window
+        local dragStartPos, dragStartMouse
+        local draggingSettings = false
+        settingsTitleBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                draggingSettings = true
+                dragStartPos = settingsWindow.Position
+                dragStartMouse = input.Position
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if draggingSettings and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local delta = input.Position - dragStartMouse
+                settingsWindow.Position = UDim2.new(dragStartPos.X.Scale, dragStartPos.X.Offset + delta.X, dragStartPos.Y.Scale, dragStartPos.Y.Offset + delta.Y)
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                draggingSettings = false
+            end
+        end)
+
+        local speedLabel = Instance.new("TextLabel")
+        speedLabel.Size = UDim2.new(0, 140, 0, 30)
+        speedLabel.Position = UDim2.new(0, 20, 0, 60)
+        speedLabel.BackgroundTransparency = 1
+        speedLabel.Text = "Signals per second:"
+        speedLabel.TextColor3 = Color3.fromRGB(170, 165, 220)
+        speedLabel.TextSize = 12
+        speedLabel.Font = Enum.Font.Gotham
+        speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+        speedLabel.ZIndex = 51
+        speedLabel.Parent = settingsWindow
+
+        local speedBox = Instance.new("TextBox")
+        speedBox.Size = UDim2.new(0, 100, 0, 30)
+        speedBox.Position = UDim2.new(0, 170, 0, 60)
+        speedBox.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+        speedBox.Text = tostring(autoSpeed)
+        speedBox.TextColor3 = Color3.fromRGB(210, 210, 228)
+        speedBox.TextSize = 12
+        speedBox.Font = Enum.Font.Gotham
+        speedBox.BorderSizePixel = 0
+        speedBox.ZIndex = 51
+        speedBox.Parent = settingsWindow
+        corner(speedBox, 6)
+        stroke(speedBox, Color3.fromRGB(55, 50, 85), 1)
+
+        local speedHint = Instance.new("TextLabel")
+        speedHint.Size = UDim2.new(0, 260, 0, 20)
+        speedHint.Position = UDim2.new(0, 20, 0, 95)
+        speedHint.BackgroundTransparency = 1
+        speedHint.Text = "1 = slowest  |  10000 = fastest  |  Default: 100"
+        speedHint.TextColor3 = Color3.fromRGB(120, 120, 158)
+        speedHint.TextSize = 10
+        speedHint.Font = Enum.Font.Gotham
+        speedHint.TextXAlignment = Enum.TextXAlignment.Left
+        speedHint.ZIndex = 51
+        speedHint.Parent = settingsWindow
+
+        local saveBtn = Instance.new("TextButton")
+        saveBtn.Size = UDim2.new(0, 100, 0, 32)
+        saveBtn.Position = UDim2.new(0.5, -50, 1, -45)
+        saveBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+        saveBtn.Text = "Save"
+        saveBtn.TextColor3 = Color3.fromRGB(61, 255, 160)
+        saveBtn.TextSize = 12
+        saveBtn.Font = Enum.Font.GothamBold
+        saveBtn.BorderSizePixel = 0
+        saveBtn.ZIndex = 51
+        saveBtn.Parent = settingsWindow
+        corner(saveBtn, 7)
+        stroke(saveBtn, Color3.fromRGB(45, 80, 60), 1)
+
+        local savedMsg = nil
+        saveBtn.MouseButton1Click:Connect(function()
+            local newSpeed = tonumber(speedBox.Text)
+            if newSpeed then
+                newSpeed = math.floor(newSpeed)
+                if newSpeed >= 1 and newSpeed <= 10000 then
+                    autoSpeed = newSpeed
+                    speedBox.Text = tostring(autoSpeed)
+                    speedBox.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+                    if savedMsg then savedMsg:Destroy() end
+                    savedMsg = Instance.new("TextLabel")
+                    savedMsg.Size = UDim2.new(0, 100, 0, 20)
+                    savedMsg.Position = UDim2.new(0.5, -50, 1, -20)
+                    savedMsg.BackgroundTransparency = 1
+                    savedMsg.Text = "Saved!"
+                    savedMsg.TextColor3 = Color3.fromRGB(61, 255, 160)
+                    savedMsg.TextSize = 10
+                    savedMsg.Font = Enum.Font.GothamBold
+                    savedMsg.ZIndex = 52
+                    savedMsg.Parent = settingsWindow
+                    task.wait(1.5)
+                    if savedMsg then savedMsg:Destroy() end
+                else
+                    speedBox.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+                    task.wait(0.5)
+                    speedBox.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+                end
+            else
+                speedBox.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+                task.wait(0.5)
+                speedBox.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+            end
+        end)
+    end
+end
+
+settingsBtn.MouseButton1Click:Connect(toggleSettings)
+
+-- Visibility toggles
 local uiVisible = true
-local isMobile = UserInputService.TouchEnabled
 local reopenButton = nil
 
 local function showGui()
@@ -260,14 +505,13 @@ local function hideGui()
                 reopenButton.Parent = playerGui
                 corner(reopenButton, 28)
                 stroke(reopenButton, Color3.fromRGB(80, 70, 120), 1.5)
-                
+
                 local dragStartPos, dragStartMouse
                 reopenButton.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
                         dragStartPos = reopenButton.Position
                         dragStartMouse = input.Position
-                        local moveConn
-                        local endConn
+                        local moveConn, endConn
                         moveConn = UserInputService.InputChanged:Connect(function(input2)
                             if input2.UserInputType == input.UserInputType then
                                 local delta = input2.Position - dragStartMouse
@@ -282,7 +526,7 @@ local function hideGui()
                         end)
                     end
                 end)
-                
+
                 reopenButton.MouseButton1Click:Connect(showGui)
             else
                 reopenButton.Visible = true
@@ -294,24 +538,21 @@ end
 closeBtn.MouseButton1Click:Connect(hideGui)
 
 if not isMobile then
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    UserInputService.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.RightShift then
-            if uiVisible then
-                hideGui()
-            else
-                showGui()
-            end
+            if uiVisible then hideGui() else showGui() end
         end
     end)
 end
 
+-- Log management
 local eventCount = 0
 local entries = {}
 local suppressCounter = 0
 
 local function fireFakeSignal(signalType, id)
     suppressCounter = suppressCounter + 1
-    local success, err = pcall(function()
+    pcall(function()
         if signalType == "Product" then
             MarketplaceService:SignalPromptProductPurchaseFinished(player.UserId, id, true)
         elseif signalType == "Gamepass" then
@@ -323,9 +564,6 @@ local function fireFakeSignal(signalType, id)
         end
     end)
     suppressCounter = suppressCounter - 1
-    if not success and err then
-        warn("Failed to fire signal:", err)
-    end
 end
 
 local function makeEmptyLabel()
@@ -335,7 +573,7 @@ local function makeEmptyLabel()
     el.BackgroundTransparency = 1
     el.Text = "Waiting for events…\nAll marketplace events will appear here."
     el.TextColor3 = Color3.fromRGB(120, 120, 158)
-    el.TextSize = 13
+    el.TextSize = 13 * fontSizeScale
     el.Font = Enum.Font.Gotham
     el.TextWrapped = true
     el.LayoutOrder = 99999
@@ -366,7 +604,6 @@ local function stopAllAutoAndSpam()
         end
     end
     table.clear(activeAutoButtons)
-    
     for btn, data in pairs(activeSpamButtons) do
         data.active = false
         if data.loop then task.cancel(data.loop) end
@@ -384,19 +621,18 @@ stopAllBtn.MouseButton1Click:Connect(stopAllAutoAndSpam)
 local function addLog(label, id, signalType)
     if suppressCounter > 0 then return end
     setEmpty(false)
-    
+    local entryHeight = isMobile and 56 or 46
     local entry = Instance.new("Frame")
-    entry.Size = UDim2.new(1, -2, 0, 46)
+    entry.Size = UDim2.new(1, -2, 0, entryHeight)
     entry.BackgroundColor3 = Color3.fromRGB(17, 17, 24)
     entry.BorderSizePixel = 0
     entry.LayoutOrder = -(eventCount)
     entry.Parent = logArea
     corner(entry, 10)
     stroke(entry, Color3.fromRGB(48, 46, 70), 1)
-    
     entry.BackgroundTransparency = 1
     TweenService:Create(entry, TweenInfo.new(0.18), {BackgroundTransparency = 0}):Play()
-    
+
     local dot = Instance.new("Frame")
     dot.Size = UDim2.new(0, 8, 0, 8)
     dot.Position = UDim2.new(0, 14, 0.5, -4)
@@ -404,85 +640,85 @@ local function addLog(label, id, signalType)
     dot.BorderSizePixel = 0
     dot.Parent = entry
     corner(dot, 999)
-    
+
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(0, 76, 1, 0)
     lbl.Position = UDim2.new(0, 28, 0, 0)
     lbl.BackgroundTransparency = 1
     lbl.Text = string.upper(label)
     lbl.TextColor3 = Color3.fromRGB(160, 150, 210)
-    lbl.TextSize = 10
+    lbl.TextSize = 10 * fontSizeScale
     lbl.Font = Enum.Font.GothamBold
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = entry
-    
+
     local idEl = Instance.new("TextLabel")
     idEl.Size = UDim2.new(0, 200, 1, 0)
     idEl.Position = UDim2.new(0, 108, 0, 0)
     idEl.BackgroundTransparency = 1
     idEl.Text = tostring(id)
     idEl.TextColor3 = Color3.fromRGB(220, 220, 240)
-    idEl.TextSize = 14
+    idEl.TextSize = 14 * fontSizeScale
     idEl.Font = Enum.Font.GothamBold
     idEl.TextXAlignment = Enum.TextXAlignment.Left
     idEl.TextTruncate = Enum.TextTruncate.AtEnd
     idEl.Parent = entry
-    
+
     local timeEl = Instance.new("TextLabel")
     timeEl.Size = UDim2.new(0, 70, 1, 0)
     timeEl.Position = UDim2.new(0, 320, 0, 0)
     timeEl.BackgroundTransparency = 1
     timeEl.Text = getTime()
     timeEl.TextColor3 = Color3.fromRGB(140, 135, 180)
-    timeEl.TextSize = 11
+    timeEl.TextSize = 11 * fontSizeScale
     timeEl.Font = Enum.Font.Gotham
     timeEl.Parent = entry
-    
+
     local buttonFrame = Instance.new("Frame")
     buttonFrame.Size = UDim2.new(0, 200, 1, 0)
     buttonFrame.Position = UDim2.new(1, -200, 0, 0)
     buttonFrame.BackgroundTransparency = 1
     buttonFrame.Parent = entry
-    
+
     local autoBtn = Instance.new("TextButton")
-    autoBtn.Size = UDim2.new(0, 56, 0, 28)
-    autoBtn.Position = UDim2.new(0, 0, 0.5, -14)
+    autoBtn.Size = UDim2.new(0, 56, 0, buttonHeight)
+    autoBtn.Position = UDim2.new(0, 0, 0.5, -buttonHeight/2)
     autoBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
     autoBtn.Text = "Auto"
     autoBtn.TextColor3 = Color3.fromRGB(170, 165, 220)
-    autoBtn.TextSize = 11
+    autoBtn.TextSize = 11 * fontSizeScale
     autoBtn.Font = Enum.Font.GothamBold
     autoBtn.BorderSizePixel = 0
     autoBtn.Parent = buttonFrame
     corner(autoBtn, 7)
     stroke(autoBtn, Color3.fromRGB(55, 50, 85), 1)
-    
+
     local copyBtn = Instance.new("TextButton")
-    copyBtn.Size = UDim2.new(0, 56, 0, 28)
-    copyBtn.Position = UDim2.new(0, 62, 0.5, -14)
+    copyBtn.Size = UDim2.new(0, 56, 0, buttonHeight)
+    copyBtn.Position = UDim2.new(0, 62, 0.5, -buttonHeight/2)
     copyBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
     copyBtn.Text = "Copy"
     copyBtn.TextColor3 = Color3.fromRGB(170, 165, 220)
-    copyBtn.TextSize = 11
+    copyBtn.TextSize = 11 * fontSizeScale
     copyBtn.Font = Enum.Font.GothamBold
     copyBtn.BorderSizePixel = 0
     copyBtn.Parent = buttonFrame
     corner(copyBtn, 7)
     stroke(copyBtn, Color3.fromRGB(55, 50, 85), 1)
-    
+
     local runBtn = Instance.new("TextButton")
-    runBtn.Size = UDim2.new(0, 52, 0, 28)
-    runBtn.Position = UDim2.new(0, 124, 0.5, -14)
+    runBtn.Size = UDim2.new(0, 52, 0, buttonHeight)
+    runBtn.Position = UDim2.new(0, 124, 0.5, -buttonHeight/2)
     runBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
     runBtn.Text = "Run"
     runBtn.TextColor3 = Color3.fromRGB(170, 165, 220)
-    runBtn.TextSize = 11
+    runBtn.TextSize = 11 * fontSizeScale
     runBtn.Font = Enum.Font.GothamBold
     runBtn.BorderSizePixel = 0
     runBtn.Parent = buttonFrame
     corner(runBtn, 7)
     stroke(runBtn, Color3.fromRGB(55, 50, 85), 1)
-    
+
     copyBtn.MouseEnter:Connect(function()
         copyBtn.TextColor3 = Color3.fromRGB(190, 180, 255)
         copyBtn.BackgroundColor3 = Color3.fromRGB(22, 18, 40)
@@ -502,32 +738,27 @@ local function addLog(label, id, signalType)
         copyBtn.TextColor3 = Color3.fromRGB(170, 165, 220)
         copyBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
     end)
-    
+
     local autoActive = false
     local autoLoop = nil
-    
     local function startAuto()
         if autoActive then return end
         autoActive = true
         autoBtn.Text = "Auto ON"
         autoBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
         autoBtn.BackgroundColor3 = Color3.fromRGB(40, 15, 15)
-        
         autoLoop = task.spawn(function()
+            local delay = autoSpeed > 0 and (1 / autoSpeed) or 0.01
             while autoActive and autoBtn.Parent do
                 fireFakeSignal(signalType, id)
-                task.wait(0.01)
+                task.wait(delay)
             end
         end)
         activeAutoButtons[autoBtn] = {active = true, loop = autoLoop}
     end
-    
     local function stopAuto()
         autoActive = false
-        if autoLoop then
-            task.cancel(autoLoop)
-            autoLoop = nil
-        end
+        if autoLoop then task.cancel(autoLoop) end
         activeAutoButtons[autoBtn] = nil
         if autoBtn.Parent then
             autoBtn.Text = "Auto"
@@ -535,22 +766,19 @@ local function addLog(label, id, signalType)
             autoBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
         end
     end
-    
     autoBtn.MouseButton1Click:Connect(function()
         if autoActive then stopAuto() else startAuto() end
     end)
-    
+
     local holdStart = nil
     local holdConnection = nil
     local spamLoop = nil
     local isSpamming = false
-    
     local function startSpam()
         if isSpamming then return end
         isSpamming = true
         runBtn.Text = "Spamming..."
         runBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
-        
         spamLoop = task.spawn(function()
             while isSpamming and runBtn.Parent do
                 fireFakeSignal(signalType, id)
@@ -559,13 +787,9 @@ local function addLog(label, id, signalType)
         end)
         activeSpamButtons[runBtn] = {active = true, loop = spamLoop}
     end
-    
     local function stopSpam()
         isSpamming = false
-        if spamLoop then
-            task.cancel(spamLoop)
-            spamLoop = nil
-        end
+        if spamLoop then task.cancel(spamLoop) end
         activeSpamButtons[runBtn] = nil
         if runBtn.Parent then
             runBtn.Text = "Run"
@@ -573,44 +797,50 @@ local function addLog(label, id, signalType)
             runBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
         end
     end
-    
+
+    -- Use InputBegan/InputEnded for both mouse and touch
+    local function onRunPress()
+        if isSpamming then return end
+        holdStart = tick()
+        holdConnection = task.spawn(function()
+            while holdStart and (tick() - holdStart) < 3 do
+                task.wait(0.1)
+            end
+            if holdStart and not isSpamming then
+                startSpam()
+            end
+        end)
+    end
+
+    local function onRunRelease()
+        local heldDuration = holdStart and (tick() - holdStart) or 0
+        holdStart = nil
+        if holdConnection then task.cancel(holdConnection) end
+        if isSpamming then
+            stopSpam()
+        elseif heldDuration < 3 then
+            fireFakeSignal(signalType, id)
+            runBtn.Text = "Sent!"
+            runBtn.TextColor3 = Color3.fromRGB(61, 255, 160)
+            task.wait(1.5)
+            if runBtn.Parent then
+                runBtn.Text = "Run"
+                runBtn.TextColor3 = Color3.fromRGB(170, 165, 220)
+            end
+        end
+    end
+
     runBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            holdStart = tick()
-            holdConnection = task.spawn(function()
-                while holdStart and (tick() - holdStart) < 3 do
-                    task.wait(0.1)
-                end
-                if holdStart and not isSpamming then
-                    startSpam()
-                end
-            end)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            onRunPress()
         end
     end)
-    
     runBtn.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            local heldDuration = holdStart and (tick() - holdStart) or 0
-            holdStart = nil
-            if holdConnection then
-                task.cancel(holdConnection)
-                holdConnection = nil
-            end
-            if isSpamming then
-                stopSpam()
-            elseif heldDuration < 3 then
-                fireFakeSignal(signalType, id)
-                runBtn.Text = "Sent!"
-                runBtn.TextColor3 = Color3.fromRGB(61, 255, 160)
-                task.wait(1.5)
-                if runBtn.Parent then
-                    runBtn.Text = "Run"
-                    runBtn.TextColor3 = Color3.fromRGB(170, 165, 220)
-                end
-            end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            onRunRelease()
         end
     end)
-    
+
     runBtn.MouseEnter:Connect(function()
         if not isSpamming then
             runBtn.TextColor3 = Color3.fromRGB(61, 255, 160)
@@ -623,7 +853,7 @@ local function addLog(label, id, signalType)
             runBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
         end
     end)
-    
+
     entry.AncestryChanged:Connect(function()
         if not entry.Parent then
             if autoActive then stopAuto() end
@@ -636,7 +866,7 @@ local function addLog(label, id, signalType)
             end
         end
     end)
-    
+
     eventCount = eventCount + 1
     countLabel.Text = eventCount .. (eventCount == 1 and " event captured" or " events captured")
     table.insert(entries, entry)
@@ -656,15 +886,12 @@ end)
 MarketplaceService.PromptProductPurchaseFinished:Connect(function(plr, id, bought)
     if suppressCounter == 0 then addLog("Product", id, "Product") end
 end)
-
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(plr, id, bought)
     if suppressCounter == 0 then addLog("Gamepass", id, "Gamepass") end
 end)
-
 MarketplaceService.PromptBulkPurchaseFinished:Connect(function(userId, id, bought)
     if suppressCounter == 0 then addLog("Bulk", id, "Bulk") end
 end)
-
 MarketplaceService.PromptPurchaseFinished:Connect(function(userId, id, bought)
     if suppressCounter == 0 then addLog("Purchase", id, "Purchase") end
 end)
