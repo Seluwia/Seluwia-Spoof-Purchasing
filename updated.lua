@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local MarketplaceService = game:GetService("MarketplaceService")
+
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
@@ -15,10 +16,6 @@ screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
-
-local eventCount = 0
-local entries = {}
-local suppressingLog = false
 
 local function stroke(parent, color, thickness)
     local s = Instance.new("UIStroke", parent)
@@ -47,7 +44,9 @@ panel.Parent = screenGui
 corner(panel, 16)
 stroke(panel, Color3.fromRGB(30, 30, 42), 1)
 
-local dragging, dragStart, startPos
+local dragging = false
+local dragStart, startPos
+
 local function onInputBegan(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
@@ -55,12 +54,14 @@ local function onInputBegan(input)
         startPos = panel.Position
     end
 end
+
 local function onInputChanged(input)
     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
         panel.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end
+
 local function onInputEnded(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = false
@@ -173,31 +174,6 @@ logPad.PaddingBottom = UDim.new(0, 6)
 logPad.PaddingLeft = UDim.new(0, 4)
 logPad.PaddingRight = UDim.new(0, 4)
 
-local function makeEmptyLabel()
-    local el = Instance.new("TextLabel")
-    el.Name = "EmptyState"
-    el.Size = UDim2.new(1, 0, 0, 260)
-    el.BackgroundTransparency = 1
-    el.Text = "Waiting for events…\nAll marketplace events will appear here."
-    el.TextColor3 = Color3.fromRGB(120, 120, 158)
-    el.TextSize = 13
-    el.Font = Enum.Font.Gotham
-    el.TextWrapped = true
-    el.LayoutOrder = 99999
-    el.Parent = logArea
-    return el
-end
-makeEmptyLabel()
-
-local function setEmpty(show)
-    local e = logArea:FindFirstChild("EmptyState")
-    if show and not e then
-        makeEmptyLabel()
-    elseif not show and e then
-        e:Destroy()
-    end
-end
-
 local footer = Instance.new("Frame")
 footer.Size = UDim2.new(1, 0, 0, 50)
 footer.Position = UDim2.new(0, 0, 1, -50)
@@ -251,7 +227,130 @@ closeBtn.BorderSizePixel = 0
 closeBtn.ZIndex = 10
 closeBtn.Parent = panel
 corner(closeBtn, 999)
-closeBtn.MouseButton1Click:Connect(function() screenGui:Destroy() end)
+
+local uiVisible = true
+local isMobile = UserInputService.TouchEnabled
+local reopenButton = nil
+
+local function showGui()
+    if not screenGui.Enabled then
+        screenGui.Enabled = true
+        uiVisible = true
+        if reopenButton then reopenButton.Visible = false end
+    end
+end
+
+local function hideGui()
+    if screenGui.Enabled then
+        screenGui.Enabled = false
+        uiVisible = false
+        if isMobile then
+            if not reopenButton or not reopenButton.Parent then
+                reopenButton = Instance.new("TextButton")
+                reopenButton.Size = UDim2.new(0, 56, 0, 56)
+                reopenButton.Position = UDim2.new(1, -70, 1, -70)
+                reopenButton.AnchorPoint = Vector2.new(1, 1)
+                reopenButton.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+                reopenButton.Text = "S"
+                reopenButton.TextColor3 = Color3.fromRGB(210, 210, 228)
+                reopenButton.TextSize = 24
+                reopenButton.Font = Enum.Font.GothamBold
+                reopenButton.BorderSizePixel = 0
+                reopenButton.ZIndex = 100
+                reopenButton.Parent = playerGui
+                corner(reopenButton, 28)
+                stroke(reopenButton, Color3.fromRGB(80, 70, 120), 1.5)
+                
+                local dragStartPos, dragStartMouse
+                reopenButton.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragStartPos = reopenButton.Position
+                        dragStartMouse = input.Position
+                        local moveConn
+                        local endConn
+                        moveConn = UserInputService.InputChanged:Connect(function(input2)
+                            if input2.UserInputType == input.UserInputType then
+                                local delta = input2.Position - dragStartMouse
+                                reopenButton.Position = UDim2.new(dragStartPos.X.Scale, dragStartPos.X.Offset + delta.X, dragStartPos.Y.Scale, dragStartPos.Y.Offset + delta.Y)
+                            end
+                        end)
+                        endConn = UserInputService.InputEnded:Connect(function(input2)
+                            if input2.UserInputType == input.UserInputType then
+                                moveConn:Disconnect()
+                                endConn:Disconnect()
+                            end
+                        end)
+                    end
+                end)
+                
+                reopenButton.MouseButton1Click:Connect(showGui)
+            else
+                reopenButton.Visible = true
+            end
+        end
+    end
+end
+
+closeBtn.MouseButton1Click:Connect(hideGui)
+
+if not isMobile then
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if input.KeyCode == Enum.KeyCode.RightShift then
+            if uiVisible then
+                hideGui()
+            else
+                showGui()
+            end
+        end
+    end)
+end
+
+local eventCount = 0
+local entries = {}
+local suppressCounter = 0
+
+local function fireFakeSignal(signalType, id)
+    suppressCounter = suppressCounter + 1
+    local success, err = pcall(function()
+        if signalType == "Product" then
+            MarketplaceService:SignalPromptProductPurchaseFinished(player.UserId, id, true)
+        elseif signalType == "Gamepass" then
+            MarketplaceService:SignalPromptGamePassPurchaseFinished(player, id, true)
+        elseif signalType == "Bulk" then
+            MarketplaceService:SignalPromptBulkPurchaseFinished(player.UserId, id, true)
+        elseif signalType == "Purchase" then
+            MarketplaceService:SignalPromptPurchaseFinished(player.UserId, id, true)
+        end
+    end)
+    suppressCounter = suppressCounter - 1
+    if not success and err then
+        warn("Failed to fire signal:", err)
+    end
+end
+
+local function makeEmptyLabel()
+    local el = Instance.new("TextLabel")
+    el.Name = "EmptyState"
+    el.Size = UDim2.new(1, 0, 0, 260)
+    el.BackgroundTransparency = 1
+    el.Text = "Waiting for events…\nAll marketplace events will appear here."
+    el.TextColor3 = Color3.fromRGB(120, 120, 158)
+    el.TextSize = 13
+    el.Font = Enum.Font.Gotham
+    el.TextWrapped = true
+    el.LayoutOrder = 99999
+    el.Parent = logArea
+    return el
+end
+
+local function setEmpty(show)
+    local e = logArea:FindFirstChild("EmptyState")
+    if show and not e then
+        makeEmptyLabel()
+    elseif not show and e then
+        e:Destroy()
+    end
+end
 
 local activeAutoButtons = {}
 local activeSpamButtons = {}
@@ -260,7 +359,7 @@ local function stopAllAutoAndSpam()
     for btn, data in pairs(activeAutoButtons) do
         data.active = false
         if data.loop then task.cancel(data.loop) end
-        if btn.Parent then
+        if btn and btn.Parent then
             btn.Text = "Auto"
             btn.TextColor3 = Color3.fromRGB(170, 165, 220)
             btn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
@@ -271,7 +370,7 @@ local function stopAllAutoAndSpam()
     for btn, data in pairs(activeSpamButtons) do
         data.active = false
         if data.loop then task.cancel(data.loop) end
-        if btn.Parent then
+        if btn and btn.Parent then
             btn.Text = "Run"
             btn.TextColor3 = Color3.fromRGB(170, 165, 220)
             btn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
@@ -283,8 +382,9 @@ end
 stopAllBtn.MouseButton1Click:Connect(stopAllAutoAndSpam)
 
 local function addLog(label, id, signalType)
-    if suppressingLog then return end
+    if suppressCounter > 0 then return end
     setEmpty(false)
+    
     local entry = Instance.new("Frame")
     entry.Size = UDim2.new(1, -2, 0, 46)
     entry.BackgroundColor3 = Color3.fromRGB(17, 17, 24)
@@ -293,10 +393,10 @@ local function addLog(label, id, signalType)
     entry.Parent = logArea
     corner(entry, 10)
     stroke(entry, Color3.fromRGB(48, 46, 70), 1)
-
+    
     entry.BackgroundTransparency = 1
     TweenService:Create(entry, TweenInfo.new(0.18), {BackgroundTransparency = 0}):Play()
-
+    
     local dot = Instance.new("Frame")
     dot.Size = UDim2.new(0, 8, 0, 8)
     dot.Position = UDim2.new(0, 14, 0.5, -4)
@@ -304,7 +404,7 @@ local function addLog(label, id, signalType)
     dot.BorderSizePixel = 0
     dot.Parent = entry
     corner(dot, 999)
-
+    
     local lbl = Instance.new("TextLabel")
     lbl.Size = UDim2.new(0, 76, 1, 0)
     lbl.Position = UDim2.new(0, 28, 0, 0)
@@ -315,7 +415,7 @@ local function addLog(label, id, signalType)
     lbl.Font = Enum.Font.GothamBold
     lbl.TextXAlignment = Enum.TextXAlignment.Left
     lbl.Parent = entry
-
+    
     local idEl = Instance.new("TextLabel")
     idEl.Size = UDim2.new(0, 200, 1, 0)
     idEl.Position = UDim2.new(0, 108, 0, 0)
@@ -327,7 +427,7 @@ local function addLog(label, id, signalType)
     idEl.TextXAlignment = Enum.TextXAlignment.Left
     idEl.TextTruncate = Enum.TextTruncate.AtEnd
     idEl.Parent = entry
-
+    
     local timeEl = Instance.new("TextLabel")
     timeEl.Size = UDim2.new(0, 70, 1, 0)
     timeEl.Position = UDim2.new(0, 320, 0, 0)
@@ -337,13 +437,13 @@ local function addLog(label, id, signalType)
     timeEl.TextSize = 11
     timeEl.Font = Enum.Font.Gotham
     timeEl.Parent = entry
-
+    
     local buttonFrame = Instance.new("Frame")
     buttonFrame.Size = UDim2.new(0, 200, 1, 0)
     buttonFrame.Position = UDim2.new(1, -200, 0, 0)
     buttonFrame.BackgroundTransparency = 1
     buttonFrame.Parent = entry
-
+    
     local autoBtn = Instance.new("TextButton")
     autoBtn.Size = UDim2.new(0, 56, 0, 28)
     autoBtn.Position = UDim2.new(0, 0, 0.5, -14)
@@ -356,7 +456,7 @@ local function addLog(label, id, signalType)
     autoBtn.Parent = buttonFrame
     corner(autoBtn, 7)
     stroke(autoBtn, Color3.fromRGB(55, 50, 85), 1)
-
+    
     local copyBtn = Instance.new("TextButton")
     copyBtn.Size = UDim2.new(0, 56, 0, 28)
     copyBtn.Position = UDim2.new(0, 62, 0.5, -14)
@@ -369,7 +469,7 @@ local function addLog(label, id, signalType)
     copyBtn.Parent = buttonFrame
     corner(copyBtn, 7)
     stroke(copyBtn, Color3.fromRGB(55, 50, 85), 1)
-
+    
     local runBtn = Instance.new("TextButton")
     runBtn.Size = UDim2.new(0, 52, 0, 28)
     runBtn.Position = UDim2.new(0, 124, 0.5, -14)
@@ -382,7 +482,7 @@ local function addLog(label, id, signalType)
     runBtn.Parent = buttonFrame
     corner(runBtn, 7)
     stroke(runBtn, Color3.fromRGB(55, 50, 85), 1)
-
+    
     copyBtn.MouseEnter:Connect(function()
         copyBtn.TextColor3 = Color3.fromRGB(190, 180, 255)
         copyBtn.BackgroundColor3 = Color3.fromRGB(22, 18, 40)
@@ -402,40 +502,26 @@ local function addLog(label, id, signalType)
         copyBtn.TextColor3 = Color3.fromRGB(170, 165, 220)
         copyBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
     end)
-
+    
     local autoActive = false
     local autoLoop = nil
-
-    local function fireFakeSignal()
-        suppressingLog = true
-        if signalType == "Product" then
-            pcall(function() MarketplaceService:SignalPromptProductPurchaseFinished(player.UserId, id, true) end)
-        elseif signalType == "Gamepass" then
-            pcall(function() MarketplaceService:SignalPromptGamePassPurchaseFinished(player, id, true) end)
-        elseif signalType == "Bulk" then
-            pcall(function() MarketplaceService:SignalPromptBulkPurchaseFinished(player.UserId, id, true) end)
-        elseif signalType == "Purchase" then
-            pcall(function() MarketplaceService:SignalPromptPurchaseFinished(player.UserId, id, true) end)
-        end
-        suppressingLog = false
-    end
-
+    
     local function startAuto()
         if autoActive then return end
         autoActive = true
         autoBtn.Text = "Auto ON"
         autoBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
         autoBtn.BackgroundColor3 = Color3.fromRGB(40, 15, 15)
-        activeAutoButtons[autoBtn] = {active = true, loop = nil}
+        
         autoLoop = task.spawn(function()
             while autoActive and autoBtn.Parent do
-                fireFakeSignal()
+                fireFakeSignal(signalType, id)
                 task.wait(0.01)
             end
         end)
-        activeAutoButtons[autoBtn].loop = autoLoop
+        activeAutoButtons[autoBtn] = {active = true, loop = autoLoop}
     end
-
+    
     local function stopAuto()
         autoActive = false
         if autoLoop then
@@ -449,31 +535,31 @@ local function addLog(label, id, signalType)
             autoBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
         end
     end
-
+    
     autoBtn.MouseButton1Click:Connect(function()
         if autoActive then stopAuto() else startAuto() end
     end)
-
+    
     local holdStart = nil
     local holdConnection = nil
     local spamLoop = nil
     local isSpamming = false
-
+    
     local function startSpam()
         if isSpamming then return end
         isSpamming = true
         runBtn.Text = "Spamming..."
         runBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
-        activeSpamButtons[runBtn] = {active = true, loop = nil}
+        
         spamLoop = task.spawn(function()
             while isSpamming and runBtn.Parent do
-                fireFakeSignal()
+                fireFakeSignal(signalType, id)
                 task.wait(0.1)
             end
         end)
-        activeSpamButtons[runBtn].loop = spamLoop
+        activeSpamButtons[runBtn] = {active = true, loop = spamLoop}
     end
-
+    
     local function stopSpam()
         isSpamming = false
         if spamLoop then
@@ -487,7 +573,7 @@ local function addLog(label, id, signalType)
             runBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
         end
     end
-
+    
     runBtn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             holdStart = tick()
@@ -501,7 +587,7 @@ local function addLog(label, id, signalType)
             end)
         end
     end)
-
+    
     runBtn.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             local heldDuration = holdStart and (tick() - holdStart) or 0
@@ -513,7 +599,7 @@ local function addLog(label, id, signalType)
             if isSpamming then
                 stopSpam()
             elseif heldDuration < 3 then
-                fireFakeSignal()
+                fireFakeSignal(signalType, id)
                 runBtn.Text = "Sent!"
                 runBtn.TextColor3 = Color3.fromRGB(61, 255, 160)
                 task.wait(1.5)
@@ -524,7 +610,7 @@ local function addLog(label, id, signalType)
             end
         end
     end)
-
+    
     runBtn.MouseEnter:Connect(function()
         if not isSpamming then
             runBtn.TextColor3 = Color3.fromRGB(61, 255, 160)
@@ -537,19 +623,20 @@ local function addLog(label, id, signalType)
             runBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
         end
     end)
-
+    
     entry.AncestryChanged:Connect(function()
         if not entry.Parent then
-            isSpamming = false
-            autoActive = false
-            if spamLoop then task.cancel(spamLoop) end
-            if autoLoop then task.cancel(autoLoop) end
-            if holdConnection then task.cancel(holdConnection) end
-            activeAutoButtons[autoBtn] = nil
-            activeSpamButtons[runBtn] = nil
+            if autoActive then stopAuto() end
+            if isSpamming then stopSpam() end
+            for i, e in ipairs(entries) do
+                if e == entry then
+                    table.remove(entries, i)
+                    break
+                end
+            end
         end
     end)
-
+    
     eventCount = eventCount + 1
     countLabel.Text = eventCount .. (eventCount == 1 and " event captured" or " events captured")
     table.insert(entries, entry)
@@ -557,7 +644,9 @@ end
 
 clearBtn.MouseButton1Click:Connect(function()
     stopAllAutoAndSpam()
-    for _, e in ipairs(entries) do e:Destroy() end
+    for _, e in ipairs(entries) do
+        e:Destroy()
+    end
     entries = {}
     eventCount = 0
     countLabel.Text = "0 events captured"
@@ -565,17 +654,19 @@ clearBtn.MouseButton1Click:Connect(function()
 end)
 
 MarketplaceService.PromptProductPurchaseFinished:Connect(function(plr, id, bought)
-    if not suppressingLog then addLog("Product", id, "Product") end
+    if suppressCounter == 0 then addLog("Product", id, "Product") end
 end)
 
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(plr, id, bought)
-    if not suppressingLog then addLog("Gamepass", id, "Gamepass") end
+    if suppressCounter == 0 then addLog("Gamepass", id, "Gamepass") end
 end)
 
 MarketplaceService.PromptBulkPurchaseFinished:Connect(function(userId, id, bought)
-    if not suppressingLog then addLog("Bulk", id, "Bulk") end
+    if suppressCounter == 0 then addLog("Bulk", id, "Bulk") end
 end)
 
 MarketplaceService.PromptPurchaseFinished:Connect(function(userId, id, bought)
-    if not suppressingLog then addLog("Purchase", id, "Purchase") end
+    if suppressCounter == 0 then addLog("Purchase", id, "Purchase") end
 end)
+
+setEmpty(true)
