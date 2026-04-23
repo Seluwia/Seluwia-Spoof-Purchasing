@@ -1,72 +1,50 @@
--- Outdated loadstring
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Seluwia/vyv/refs/heads/main/vyv.lua"))()
-print('copy new loadstring for more updates')
-print('loadstring in channel')
+-- script made by Seluwia
+-- offical server to get the script (recommend if you need support)
+-- https://discord.gg/PYpMKsX97u
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+-- beep
+game.Players.LocalPlayer:Kick("Outdated Version. Join .gg/7jJjAmksH")
