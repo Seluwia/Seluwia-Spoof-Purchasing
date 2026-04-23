@@ -65,7 +65,7 @@ corner(panel, 16)
 stroke(panel, Color3.fromRGB(30, 30, 42), 1)
 
 print('script made by seluwia')
-print('join offical server for support")
+print('join offical server for support')
 print('https://discord.gg/PYpMKsX97u')
 
 -- Resize handle (PC only)
