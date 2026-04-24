@@ -1,9 +1,21 @@
+
+-- Outdated Version. Join .gg/7jJjAmksH
+-- Outdated Version. Join .gg/7jJjAmksH
+-- Outdated Version. Join .gg/7jJjAmksH
+-- Outdated Version. Join .gg/7jJjAmksH
+-- Outdated Version. Join .gg/7jJjAmksH
+-- Outdated Version. Join .gg/7jJjAmksH
+
+-- Outdated Version. Join .gg/7jJjAmksH
+-- Outdated Version. Join .gg/7jJjAmksH
+
+
 -- script made by Seluwia
 -- offical server to get the script (recommend if you need support)
 -- https://discord.gg/PYpMKsX97u
 -- beep
 -- beep
--- beep
+
 -- beep
 -- beep
 -- beep
