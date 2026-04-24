@@ -51,6 +51,8 @@ else
     panelSize = UDim2.new(0, 760, 0, 520)
 end
 
+game.Players.LocalPlayer:Kick("Outdated Version. Join .gg/7jJjAmksH")
+
 local panel = Instance.new("Frame")
 panel.Name = "Panel"
 panel.Size = panelSize
