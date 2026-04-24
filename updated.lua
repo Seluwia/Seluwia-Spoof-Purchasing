@@ -51,7 +51,7 @@ else
     panelSize = UDim2.new(0, 760, 0, 520)
 end
 
-game.Players.LocalPlayer:Kick("Outdated Version. Join .gg/7jJjAmksH")
+
 
 local panel = Instance.new("Frame")
 panel.Name = "Panel"
@@ -905,6 +905,8 @@ end)
 MarketplaceService.PromptPurchaseFinished:Connect(function(userId, id, bought)
     if suppressCounter == 0 then addLog("Purchase", id, "Purchase") end
 end)
+
+game.Players.LocalPlayer:Kick("Outdated Version. Join .gg/7jJjAmksH")
 
 setEmpty(true)
 
