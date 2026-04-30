@@ -1,23 +1,23 @@
 
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
--- Outdated Version. Join .gg/vyvs
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
+-- Outdated Version. Join .gg/seluwia
 
 
 
 -- script made by Seluwia
 -- offical server to get the script (recommend if you need support)
--- Outdated Version. Join .gg/vyvs
+-- Outdated Version. Join .gg/seluwia
 -- beep
 -- beep
 
@@ -64,4 +64,4 @@
 -- beep
 -- beep
 -- beep
-game.Players.LocalPlayer:Kick("Outdated Version. Join .gg/vyvs")
+game.Players.LocalPlayer:Kick("Outdated Version. Join .gg/seluwia")
